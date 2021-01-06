@@ -3,6 +3,7 @@ from sklearn.model_selection import GridSearchCV
 from skimage import feature
 from skimage import transform
 import numpy as np
+import pickle
 
 
 class Detector:
@@ -16,7 +17,7 @@ class Detector:
         else:
             self.face_shape = (0, 0)
         X_train = np.array([feature.hog(img) for img in X_train])
-        grid = GridSearchCV(LinearSVC(), {'C': [0.1, 1.0, 2.0, 4.0, 8.0]})
+        grid = GridSearchCV(LinearSVC(), {'C': [1.0, 2.0, 4.0, 8.0]})
         grid.fit(X_train, Y_train)
         self.svm = grid.best_estimator_
         self.svm.fit(X_train, Y_train)
@@ -25,7 +26,7 @@ class Detector:
         scale = False
         if patch_size is None:
             patch_size = self.face_shape
-        if patch_size != self.face_shape:
+        elif patch_size != self.face_shape:
             scale = True
         Ni, Nj = patch_size[0], patch_size[1]
         for i in range(0, img.shape[0] - Ni, dx):
@@ -40,8 +41,20 @@ class Detector:
             shape = self.face_shape
         indices, patches = zip(*self._get_patches(img, shape))
         faces = []
-        for k in range(len(patches)):
-            if self.svm.predict(feature.hog(patches[k])).sum():
+        labels = self.svm.predict([feature.hog(patch) for patch in patches])
+        for k in range(len(labels)):
+            if labels[k]:
                 i, j = indices[k][0], indices[k][1]
                 faces.append([i, j, shape[0], shape[1]])
         return faces
+
+    def save(self, path: str):
+        with open(path, 'wb') as fid:
+            pickle.dump(self, fid)
+
+    def load(self, path: str):
+        with open(path, 'rb') as fid:
+            obj = pickle.load(fid)
+            self.svm = obj.svm
+            self.face_shape = obj.face_shape
+
