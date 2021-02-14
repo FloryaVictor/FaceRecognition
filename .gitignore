@@ -130,3 +130,7 @@ dmypy.json
 
 .idea
 *.pkl
+
+known_faces/*
+photos/*
+venv
